@@ -34,7 +34,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .from('users')
         .select('*')
         .eq('email', email)
-        .single();
+        .maybeSingle();
 
       if (!error && users) {
         // Check if password matches (in production, use proper password hashing)
