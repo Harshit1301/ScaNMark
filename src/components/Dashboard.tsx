@@ -11,10 +11,11 @@ import {
   Plus,
   Clock,
   TrendingUp,
-  Shield
+  Shield,
+  AlertCircle
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabase';
+import { supabase, testDatabaseConnection } from '../lib/supabase';
 import MarkAttendance from './MarkAttendance';
 import ViewAttendance from './ViewAttendance';
 import Profile from './Profile';
@@ -28,6 +29,7 @@ const Dashboard: React.FC = () => {
   const [currentView, setCurrentView] = useState<DashboardView>('overview');
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
+  const [databaseConnected, setDatabaseConnected] = useState<boolean | null>(null);
   const [stats, setStats] = useState({
     totalSubjects: 0,
     totalStudents: 0,
@@ -36,8 +38,14 @@ const Dashboard: React.FC = () => {
   });
 
   useEffect(() => {
+    checkDatabaseConnection();
     loadDashboardData();
   }, [user]);
+
+  const checkDatabaseConnection = async () => {
+    const isConnected = await testDatabaseConnection();
+    setDatabaseConnected(isConnected);
+  };
 
   const loadDashboardData = async () => {
     if (!user) return;
@@ -56,13 +64,15 @@ const Dashboard: React.FC = () => {
         subjectsQuery = subjectsQuery.eq('professor_id', user.id);
       }
 
-      const { data: subjectsData } = await subjectsQuery;
-      if (subjectsData) {
+      const { data: subjectsData, error: subjectsError } = await subjectsQuery;
+      if (!subjectsError && subjectsData) {
         setSubjects(subjectsData);
+      } else if (subjectsError) {
+        console.error('Error loading subjects:', subjectsError);
       }
 
       // Load attendance records
-      const { data: attendanceData } = await supabase
+      const { data: attendanceData, error: attendanceError } = await supabase
         .from('attendance_records')
         .select(`
           *,
@@ -74,8 +84,10 @@ const Dashboard: React.FC = () => {
         `)
         .order('created_at', { ascending: false });
 
-      if (attendanceData) {
+      if (!attendanceError && attendanceData) {
         setAttendanceRecords(attendanceData);
+      } else if (attendanceError) {
+        console.error('Error loading attendance records:', attendanceError);
       }
 
       // Calculate stats
@@ -128,6 +140,21 @@ const Dashboard: React.FC = () => {
       default:
         return (
           <div className="space-y-6">
+            {/* Database Connection Status */}
+            {databaseConnected === false && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <div className="flex items-center space-x-3">
+                  <AlertCircle className="w-5 h-5 text-red-600" />
+                  <div>
+                    <h3 className="text-sm font-medium text-red-800">Database Connection Issue</h3>
+                    <p className="text-sm text-red-700 mt-1">
+                      Unable to connect to Supabase. Please check your environment variables and database setup.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-3xl font-bold text-gray-900">Welcome back, {user?.name}</h1>

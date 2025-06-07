@@ -3,42 +3,95 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-// Create a mock client if environment variables are not set
+// Create Supabase client
 const createSupabaseClient = () => {
   if (!supabaseUrl || !supabaseAnonKey || supabaseUrl === 'your_supabase_url_here') {
-    console.warn('Supabase environment variables not configured. Using mock client.');
+    console.error('❌ Supabase environment variables not configured properly!');
+    console.log('Please check your .env file and ensure you have:');
+    console.log('VITE_SUPABASE_URL=your_supabase_project_url');
+    console.log('VITE_SUPABASE_ANON_KEY=your_supabase_anon_key');
     
-    // Return a mock client that doesn't make real API calls
+    // Return a mock client that logs errors
     return {
       from: (table: string) => ({
         select: (columns?: string) => ({
           eq: (column: string, value: any) => ({
-            single: () => Promise.resolve({ data: null, error: { message: 'Supabase not configured' } }),
-            order: (column: string, options?: any) => Promise.resolve({ data: [], error: null }),
-            in: (column: string, values: any[]) => Promise.resolve({ data: [], error: null })
+            maybeSingle: () => {
+              console.error(`❌ Attempted to query ${table} table but Supabase is not configured`);
+              return Promise.resolve({ data: null, error: { message: 'Supabase not configured' } });
+            },
+            single: () => {
+              console.error(`❌ Attempted to query ${table} table but Supabase is not configured`);
+              return Promise.resolve({ data: null, error: { message: 'Supabase not configured' } });
+            },
+            order: (column: string, options?: any) => {
+              console.error(`❌ Attempted to query ${table} table but Supabase is not configured`);
+              return Promise.resolve({ data: [], error: { message: 'Supabase not configured' } });
+            },
+            in: (column: string, values: any[]) => {
+              console.error(`❌ Attempted to query ${table} table but Supabase is not configured`);
+              return Promise.resolve({ data: [], error: { message: 'Supabase not configured' } });
+            }
           }),
-          order: (column: string, options?: any) => Promise.resolve({ data: [], error: null }),
-          filter: (column: string, operator: string, value: any) => Promise.resolve({ data: [], error: null })
+          order: (column: string, options?: any) => {
+            console.error(`❌ Attempted to query ${table} table but Supabase is not configured`);
+            return Promise.resolve({ data: [], error: { message: 'Supabase not configured' } });
+          },
+          filter: (column: string, operator: string, value: any) => {
+            console.error(`❌ Attempted to query ${table} table but Supabase is not configured`);
+            return Promise.resolve({ data: [], error: { message: 'Supabase not configured' } });
+          }
         }),
         insert: (data: any) => ({
           select: () => ({
-            single: () => Promise.resolve({ data: null, error: { message: 'Supabase not configured' } })
+            single: () => {
+              console.error(`❌ Attempted to insert into ${table} table but Supabase is not configured`);
+              return Promise.resolve({ data: null, error: { message: 'Supabase not configured' } });
+            }
           })
         }),
         update: (data: any) => ({
-          eq: (column: string, value: any) => Promise.resolve({ data: null, error: { message: 'Supabase not configured' } })
+          eq: (column: string, value: any) => {
+            console.error(`❌ Attempted to update ${table} table but Supabase is not configured`);
+            return Promise.resolve({ data: null, error: { message: 'Supabase not configured' } });
+          }
         }),
         delete: () => ({
-          eq: (column: string, value: any) => Promise.resolve({ data: null, error: { message: 'Supabase not configured' } })
+          eq: (column: string, value: any) => {
+            console.error(`❌ Attempted to delete from ${table} table but Supabase is not configured`);
+            return Promise.resolve({ data: null, error: { message: 'Supabase not configured' } });
+          }
         })
       })
     } as any;
   }
 
+  console.log('✅ Supabase client initialized successfully');
   return createClient(supabaseUrl, supabaseAnonKey);
 };
 
 export const supabase = createSupabaseClient();
+
+// Test database connection
+export const testDatabaseConnection = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .select('count(*)')
+      .limit(1);
+    
+    if (error) {
+      console.error('❌ Database connection test failed:', error.message);
+      return false;
+    }
+    
+    console.log('✅ Database connection test successful');
+    return true;
+  } catch (error) {
+    console.error('❌ Database connection test failed:', error);
+    return false;
+  }
+};
 
 export type Database = {
   public: {
